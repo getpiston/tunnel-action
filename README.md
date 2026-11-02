@@ -6,10 +6,20 @@ database to migrate, an internal API to call, a service behind your VPN. The
 job is authorized by the identity GitHub gives it for that run, so there is
 no secret for the job to hold.
 
-A network connector is created, installed and given its routing rules in the
-Piston console, under Runners. Its routing rules say which jobs it admits, by
-repository, environment and branch, and what each admitted job may reach.
-This repository is the step alone.
+## Before you start
+
+The step needs a network connector running in your network, with a routing rule
+that admits the job; a job that only uses it as its [exit node](#exit-node)
+needs no rule. Install one first: the
+[connector's quick start](https://github.com/getpiston/piston-connector#quick-start-with-docker)
+takes you from creating it in the Piston console to its first job.
+
+Its routing rules say which jobs it admits, by repository, environment and
+branch, and what each admitted job may reach. For all of the connector's
+configuration, in the console and where you install it, see its guide,
+[getpiston/piston-connector](https://github.com/getpiston/piston-connector).
+[The console](https://github.com/getpiston/piston-connector#the-console) lists
+every page and setting. This repository is the step alone.
 
 ## Adding the step to a job
 
