@@ -51,19 +51,10 @@ jobs:
 | `matched_rules` | the names of the routing rules that admitted the job, comma separated |
 
 > [!WARNING]
-> With `exit_node: true` or `reset_connections: true`, the step resets every
-> TCP connection open on the machine, the runner's own and your job's. Whatever
-> opened one before the step gets an error at once and has to reconnect, so
-> start a process that holds a connection, such as a background service or a
-> long download, after the step. Every such run of the step resets them again.
->
-> Without the reset, a connection on a route the tunnel changed hangs until it
-> times out. With `exit_node`, that is every internet connection, the runner's
-> own included, which is why it resets unless `reset_connections: false`.
-> Without `exit_node`, only what the routing rules grant changes route: set
-> `reset_connections: true` if the job already holds a connection to a granted
-> address, or if a rule's **Network CIDRs** cover the internet, such as
-> `0.0.0.0/0`.
+> With `exit_node` or `reset_connections: true`, the step resets every TCP
+> connection open on the machine, so whatever opened one before the step has to
+> reconnect. Without the reset, a connection on a route the tunnel changed hangs
+> until it times out.
 
 The job needs `permissions: id-token: write`; without it the step fails at
 once and says so. Once the tunnel is up, the step logs each routing rule that
