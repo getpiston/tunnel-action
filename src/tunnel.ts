@@ -8,7 +8,7 @@ export const AGENT_URL = 'http://172.17.0.1:7843/tunnel'
 const RULE_SEPARATOR = '-------------'
 
 /**
- * What the step runs last, once the tunnel is up, unless reset_connections is false: every TCP connection the
+ * What the step runs last, once the tunnel is up, when a reset is asked for: every TCP connection the
  * machine has open destroyed, then the connection tracking of its containers' traffic flushed. A connection opened
  * before the tunnel would otherwise go silent on a route the tunnel changed and hang until it timed out; reset, it
  * fails at once and reconnects.
@@ -67,7 +67,10 @@ export async function run(surroundings: Surroundings): Promise<void> {
     return
   }
   const exitNode = core.getBooleanInput('exit_node')
-  const resetConnections = core.getBooleanInput('reset_connections')
+  // Unset, it follows exit_node, which moves the public traffic, the runner's own included, off its route.
+  const resetConnections = core.getInput('reset_connections')
+    ? core.getBooleanInput('reset_connections')
+    : exitNode
 
   let token: string
   try {

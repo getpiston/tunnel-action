@@ -175,19 +175,31 @@ describe('the step', () => {
     expect(failed).not.toHaveBeenCalled()
   })
 
-  it("leaves the machine's connections alone when reset_connections is false", async () => {
-    process.env.INPUT_RESET_CONNECTIONS = 'false'
-    const stub = await agent({
-      status: 200,
-      body: { state: 'connected', connector_name: 'prod-vpc', matched_rules: [] },
-    })
-    await run({ agentUrl: stub.url, idToken, privileged })
-    stub.close()
+  it.each([
+    { resetInput: '', exitNode: 'false', resets: false },
+    { resetInput: '', exitNode: 'true', resets: true },
+    { resetInput: 'true', exitNode: 'false', resets: true },
+    { resetInput: 'true', exitNode: 'true', resets: true },
+    { resetInput: 'false', exitNode: 'false', resets: false },
+    { resetInput: 'false', exitNode: 'true', resets: false },
+  ])(
+    "reset_connections '$resetInput' with exit_node $exitNode resets the machine's connections: $resets",
+    async ({ resetInput, exitNode, resets }) => {
+      process.env.INPUT_RESET_CONNECTIONS = resetInput
+      process.env.INPUT_EXIT_NODE = exitNode
+      const stub = await agent({
+        status: 200,
+        body: { state: 'connected', connector_name: 'prod-vpc', matched_rules: [] },
+      })
+      await run({ agentUrl: stub.url, idToken, privileged })
+      stub.close()
 
-    expect(privileged.mock.calls.map(([command]) => command)).toEqual(['sysctl'])
-    expect(info).not.toHaveBeenCalledWith('Resetting all running connections!')
-    expect(failed).not.toHaveBeenCalled()
-  })
+      expect(privileged.mock.calls.map(([command]) => command)).toEqual(
+        resets ? ['sysctl', 'ss', 'conntrack'] : ['sysctl']
+      )
+      expect(failed).not.toHaveBeenCalled()
+    }
+  )
 
   it.each([
     {

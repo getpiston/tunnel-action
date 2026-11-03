@@ -42,7 +42,7 @@ jobs:
 | `connector_name` | required | the network connector's name, as the console shows it |
 | `timeout` | `30` | how many seconds the tunnel may take to come up, at most 290 |
 | `exit_node` | `false` | `true` sends all of the job's internet traffic out through the connector, which must be an exit node; see [Exit node](#exit-node) |
-| `reset_connections` | `true` | `false` keeps the connections open on the machine when the tunnel comes up; see the warning below |
+| `reset_connections` | `exit_node`'s value | `true` resets every TCP connection open on the machine when the tunnel comes up, `false` keeps them; see the warning below |
 | `tcp_buffer_max_mib` | `32` | the most each TCP connection on the machine may buffer each way, in MiB, 1 to 1024; see [Inside the job](#inside-the-job) |
 | `audience` | `https://api.runners.eu.prod.piston.sh` | the Piston api the job's token is for; set it only on a Piston other than production |
 
@@ -51,19 +51,23 @@ jobs:
 | `matched_rules` | the names of the routing rules that admitted the job, comma separated |
 
 > [!WARNING]
-> The step resets every TCP connection open on the machine, the runner's own
-> and your job's. Whatever opened one before the step gets an error at once
-> and has to reconnect, so start a process that holds a connection, such as a
-> background service or a long download, after the step. Every run of the
-> step resets them again. `reset_connections: false` keeps them, and then a
-> connection on a route the tunnel changed hangs until it times out instead;
-> with `exit_node`, that is every internet connection, the runner's own
-> included.
+> With `exit_node: true` or `reset_connections: true`, the step resets every
+> TCP connection open on the machine, the runner's own and your job's. Whatever
+> opened one before the step gets an error at once and has to reconnect, so
+> start a process that holds a connection, such as a background service or a
+> long download, after the step. Every such run of the step resets them again.
+>
+> Without the reset, a connection on a route the tunnel changed hangs until it
+> times out. With `exit_node`, that is every internet connection, the runner's
+> own included, which is why it resets unless `reset_connections: false`.
+> Without `exit_node`, only what the routing rules grant changes route: set
+> `reset_connections: true` if the job already holds a connection to a granted
+> address, or if a rule's **Network CIDRs** cover the internet, such as
+> `0.0.0.0/0`.
 
 The job needs `permissions: id-token: write`; without it the step fails at
 once and says so. Once the tunnel is up, the step logs each routing rule that
-admitted the job and what it lets the job reach, then resets the machine's
-connections:
+admitted the job and what it lets the job reach:
 
 ```
 Piston tunnel to prod-vpc connected
@@ -80,7 +84,6 @@ Routes:
   Hostname matchers: prometheus.monitoring.svc.cluster.local
 -------------
 Raising TCP buffers to 32 MiB
-Resetting all running connections!
 ```
 
 When the tunnel does not come up, the step fails with the reason; see
@@ -95,10 +98,9 @@ the job reaches what its routing rules grant, by name or by address.
 2. Piston admits the job when one of the connector's routing rules matches it,
    and hands the tunnel to an online instance of the connector.
 3. The job and the connector get connected through an encrypted tunnel.
-   Once it is up, the step raises the machine's TCP buffers, then resets
-   every connection the machine has open, so none is left on a route the
-   tunnel changed, and ends; with `reset_connections: false` it ends without
-   the reset.
+   Once it is up, the step raises the machine's TCP buffers, then, with
+   `exit_node` or `reset_connections: true`, resets every connection the
+   machine has open, so none is left on a route the tunnel changed, and ends.
 4. The job's traffic to what the matched rules grant goes through the
    connector, which checks and logs every connection and lookup. The rest of
    the job's traffic leaves the runner as usual, unless the step asked for the
@@ -139,8 +141,8 @@ internet traffic of jobs already using it.
 - **Containers.** A job with `container:` needs nothing in its image for the
   step. The tunnel works the same in the container, in `docker run` steps
   and in service containers. In such a job the step runs inside the
-  container, where it cannot reset the machine's connections: it warns and
-  goes on.
+  container, where it cannot reset the machine's connections: a reset warns
+  and goes on.
 - **Names.** A name a rule's **Hostname matchers** match resolves to an
   address from the connector's tunnel addresses, `100.127.0.0/16` unless they
   were changed, and not to the host's own address: reach it by its name. A
@@ -162,7 +164,7 @@ internet traffic of jobs already using it.
   grows into them only as fast as it needs. In a job with `container:`, the
   step cannot reach them: it warns and goes on.
 - **One tunnel a job.** The tunnel lasts as long as the job. A repeat of the step with the same connector answers with the same tunnel,
-  and resets the machine's connections again; a step naming another connector fails. When the connector's instance
+  and repeats the reset if it asks for one; a step naming another connector fails. When the connector's instance
   restarts, connections open at that moment fail, and new ones work again
   within two minutes.
 

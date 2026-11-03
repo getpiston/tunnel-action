@@ -25,9 +25,9 @@ inputs:
   reset_connections:
     description: >
       Reset every TCP connection open on the machine once the tunnel is up, so
-      none is left on a route the tunnel changed; false keeps them.
+      none is left on a route the tunnel changed; false keeps them. Unset, it
+      follows exit_node.
     required: false
-    default: "true"
   tcp_buffer_max_mib:
     description: >
       The most each TCP connection on the machine may buffer each way, in MiB,
