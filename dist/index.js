@@ -31622,7 +31622,7 @@ const AGENT_URL = 'http://172.17.0.1:7843/tunnel';
 /** The line under the rules' heading and under each rule the step prints. */
 const RULE_SEPARATOR = '-------------';
 /**
- * What the step runs last, once the tunnel is up, unless reset_connections is false: every TCP connection the
+ * What the step runs last, once the tunnel is up, when a reset is asked for: every TCP connection the
  * machine has open destroyed, then the connection tracking of its containers' traffic flushed. A connection opened
  * before the tunnel would otherwise go silent on a route the tunnel changed and hang until it timed out; reset, it
  * fails at once and reconnects.
@@ -31650,7 +31650,10 @@ async function run(surroundings) {
         return;
     }
     const exitNode = getBooleanInput('exit_node');
-    const resetConnections = getBooleanInput('reset_connections');
+    // Unset, it follows exit_node, which moves the public traffic, the runner's own included, off its route.
+    const resetConnections = getInput('reset_connections')
+        ? getBooleanInput('reset_connections')
+        : exitNode;
     let token;
     try {
         token = await surroundings.idToken(getInput('audience'));
